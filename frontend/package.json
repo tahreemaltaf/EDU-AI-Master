@@ -1,0 +1,27 @@
+{
+  "name": "frontend",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "preview": "vite preview"
+  },
+  "devDependencies": {
+    "typescript": "~6.0.2",
+    "vite": "^8.0.12"
+  },
+  "dependencies": {
+    "@fullcalendar/daygrid": "^6.1.20",
+    "@fullcalendar/interaction": "^6.1.20",
+    "@fullcalendar/react": "^6.1.20",
+    "@fullcalendar/timegrid": "^6.1.20",
+    "axios": "^1.16.1",
+    "chart.js": "^4.5.1",
+    "framer-motion": "^12.40.0",
+    "lucide-react": "^1.16.0",
+    "react-chartjs-2": "^5.3.1",
+    "react-router-dom": "^7.15.1"
+  }
+}
