@@ -1,22 +1,22 @@
 # AI Personalized Study Planner & Quiz Generator
 **"Study Smarter, Not Harder"**
 
-## 🚀 Overview
+##  Overview
 EduAI Master is a comprehensive study platform that uses NLP to transform lecture notes into an interactive learning experience. By extracting key concepts, generating practice questions, and scheduling study sessions via spaced repetition, it helps students maximize their learning efficiency.
 
-## ✨ Features
+##  Features
 - **PDF Concept Mapping:** Automatically extracts keywords and topics from uploaded files.
 - **AI Quiz Generator:** Generates MCQs and Flashcards using HuggingFace T5.
 - **Smart Study Planner:** Gantt-style calendar showing personalized daily study goals.
 - **Performance Analytics:** Visual charts tracking study streaks and topic mastery.
 - **Spaced Repetition:** Optimized review cycles based on performance (SM-2 Algorithm).
 
-## 🛠️ Tech Stack
+##  Tech Stack
 - **Frontend:** React.js, FullCalendar.js, Chart.js, Framer Motion, Tailwind CSS (Design System).
 - **Backend:** Python, Flask, PyMuPDF, HuggingFace (T5), Torch.
 - **Tools:** Git, Vite.
 
-## 📦 Setup Instructions
+##  Setup Instructions
 
 ### Backend
 1. Navigate to `/backend`.
@@ -30,9 +30,10 @@ EduAI Master is a comprehensive study platform that uses NLP to transform lectur
 2. Install dependencies: `npm install`.
 3. Run the dev server: `npm run dev`.
 
-## 👥 Team
-- [User Name / Team Name]
-- Team Lead: Antigravity AI
+##  Team
+- Tahreem Altaf 230962
+- Mehar u Nisa 230988
+- Komal Nisar 230912
 
-## 🎥 Demo
+##  Demo
 [Link to Video Demo]
