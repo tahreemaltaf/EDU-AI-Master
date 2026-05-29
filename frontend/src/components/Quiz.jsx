@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { HelpCircle, CheckCircle2, XCircle, Loader2, AlertTriangle, ArrowRight, RotateCcw, LayoutCircleControl } from 'lucide-react';
+import { HelpCircle, CheckCircle2, XCircle, Loader2, AlertTriangle, ArrowRight, RotateCcw, PieChart } from 'lucide-react';
 import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
 
@@ -112,7 +112,7 @@ const Quiz = () => {
                 {weakAreas.length > 0 && (
                     <div className="glass-card" style={{ marginBottom: '3rem' }}>
                         <h3 style={{ marginBottom: '2rem', display: 'flex', alignItems: 'center', gap: '0.75rem', fontSize: '1.5rem' }}>
-                            <LayoutCircleControl size={24} color="var(--primary)" /> Topic Breakdown
+                            <PieChart size={24} color="var(--primary)" /> Topic Breakdown
                         </h3>
                         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1.5rem' }}>
                             {weakAreas.map((area, idx) => (

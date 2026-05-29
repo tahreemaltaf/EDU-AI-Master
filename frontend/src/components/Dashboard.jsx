@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Upload, TrendingUp, Calendar, BrainCircuit, BookOpen, Layers, CheckCircle2, ChevronRight, FileText } from 'lucide-react';
+import { Upload, TrendingUp, Calendar, BrainCircuit, BookOpen, Layers, CheckCircle2, ChevronRight, FileText, Zap } from 'lucide-react';
 import axios from 'axios';
 import { Link } from 'react-router-dom';
 
