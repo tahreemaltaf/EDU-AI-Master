@@ -1,11 +1,12 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Link } from 'react-router-dom';
-import { LayoutDashboard, BookOpen, BarChart3, Info, Upload } from 'lucide-react';
+import { LayoutDashboard, BookOpen, BarChart3, Info, Layers } from 'lucide-react';
 import Dashboard from './components/Dashboard';
 import Landing from './components/Landing';
 import Quiz from './components/Quiz';
 import Analytics from './components/Analytics';
 import StudyPlanner from './components/StudyPlanner';
+import Flashcards from './components/Flashcards';
 import About from './components/About';
 
 function App() {
@@ -14,18 +15,21 @@ function App() {
             <div className="app-container">
                 <nav className="nav">
                     <Link to="/" className="logo">EduAI Master</Link>
-                    <div className="nav-links" style={{ display: 'flex', gap: '2rem' }}>
-                        <Link to="/dashboard" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'inherit', textDecoration: 'none' }}>
-                            <LayoutDashboard size={20} /> Dashboard
+                    <div className="nav-links">
+                        <Link to="/dashboard" className="nav-item">
+                            <LayoutDashboard size={18} /> Dashboard
                         </Link>
-                        <Link to="/planner" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'inherit', textDecoration: 'none' }}>
-                            <BookOpen size={20} /> Planner
+                        <Link to="/planner" className="nav-item">
+                            <BookOpen size={18} /> Planner
                         </Link>
-                        <Link to="/analytics" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'inherit', textDecoration: 'none' }}>
-                            <BarChart3 size={20} /> Performance
+                        <Link to="/flashcards" className="nav-item">
+                            <Layers size={18} /> Flashcards
                         </Link>
-                        <Link to="/about" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'inherit', textDecoration: 'none' }}>
-                            <Info size={20} /> About
+                        <Link to="/analytics" className="nav-item">
+                            <BarChart3 size={18} /> Performance
+                        </Link>
+                        <Link to="/about" className="nav-item">
+                            <Info size={18} /> About
                         </Link>
                     </div>
                 </nav>
@@ -37,6 +41,7 @@ function App() {
                         <Route path="/quiz" element={<Quiz />} />
                         <Route path="/analytics" element={<Analytics />} />
                         <Route path="/planner" element={<StudyPlanner />} />
+                        <Route path="/flashcards" element={<Flashcards />} />
                         <Route path="/about" element={<About />} />
                     </Routes>
                 </main>
