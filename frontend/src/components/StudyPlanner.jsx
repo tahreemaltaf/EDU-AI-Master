@@ -17,6 +17,15 @@ const StudyPlanner = () => {
                 const resp = await axios.get('http://localhost:5000/api/study-plan');
                 const data = resp.data?.study_plan || [];
                 setPlan(data);
+
+                // Set initial completed map from DB values
+                const initialCompleted = {};
+                data.forEach((item, idx) => {
+                    if (item.completed || item.status === "completed") {
+                        initialCompleted[idx] = true;
+                    }
+                });
+                setCompleted(initialCompleted);
             } catch (e) {
                 console.error(e);
                 setPlan([
@@ -32,12 +41,18 @@ const StudyPlanner = () => {
         fetchPlan();
     }, []);
 
-    const toggleDone = (index) => {
-        setCompleted(prev => ({
-            ...prev,
-            [index]: !prev[index]
-        }));
+    const toggleDone = async (index) => {
+        try {
+            await axios.post('http://localhost:5000/api/toggle-task', { index });
+            setCompleted(prev => ({
+                ...prev,
+                [index]: !prev[index]
+            }));
+        } catch (e) {
+            console.error("Failed to toggle completion:", e);
+        }
     };
+
 
     const typeColor = (type) => {
         if (type === 'quiz') return '#fbbf24'; // Yellow
