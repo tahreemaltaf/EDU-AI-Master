@@ -237,6 +237,64 @@ class NLPEngine:
 
         return flashcards
 
+    def generate_chat_response(self, user_query, pdf_text, username, streak, weak_areas, topics):
+        """Generate a response to a study query using the extracted PDF context and user profile info."""
+        query = user_query.strip().lower()
+        
+        # Check if user asks about streaks
+        if "streak" in query:
+            return f"Hello {username}! Your current daily learning streak is 🔥 **{streak} day(s)**. Keep logging in daily and completing your planner checklist tasks to keep the streak alive!"
+
+        # Check if user asks about weak areas
+        if "weak area" in query or "weakness" in query or "weak topics" in query:
+            if weak_areas:
+                weak_str = ", ".join(weak_areas)
+                return f"Sure {username}! Your current weak areas (detected from recent quizzes) are: ⚠️ **{weak_str}**. I recommend going to the Dashboard or Planner and practicing a dedicated quiz for these concepts."
+            else:
+                return f"Excellent news {username}! You do not have any weak areas detected in your profile. Complete some quizzes on the Dashboard so I can analyze your mastery!"
+
+        # If user asks about their study plan or topics
+        if "study plan" in query or "schedule" in query or "what should i study" in query or "topics" in query:
+            if topics:
+                top_str = ", ".join(topics[:5])
+                return f"Hi {username}! Currently, your study topics include: **{top_str}**. You can view your FullCalendar schedule on the Study Planner page or practice custom quizzes directly from the Dashboard key insights."
+            else:
+                return f"Hi {username}! Your study plan is currently empty. Please upload course slides PDF on the Dashboard to generate a dynamic monthly schedule!"
+
+        # Search PDF text context
+        matched_sentences = []
+        if pdf_text and len(pdf_text) > 100:
+            clean_text = pdf_text.replace('\n', ' ')
+            sentences = [s.strip() for s in re.split(r'(?<=[.!?])\s+', clean_text) if len(s.strip()) > 15]
+            
+            # Extract main keywords from the query
+            words = [w for w in re.findall(r'\b[A-Za-z]{4,}\b', query) 
+                     if w not in {"explain", "what", "about", "study", "topic", "please", "concept", "define", "definition", "tell", "slide", "slides"}]
+            
+            # Find matching sentences
+            for s in sentences:
+                for word in words:
+                    if word in s.lower() and s not in matched_sentences:
+                        matched_sentences.append(s)
+                        if len(matched_sentences) >= 3:
+                            break
+                if len(matched_sentences) >= 3:
+                    break
+
+        if matched_sentences:
+            context_info = " ".join(matched_sentences)
+            return f"Hi {username}! According to your uploaded slides document:\n\n💬 *\"{context_info}\"*\n\nLet me know if you would like me to break down any of these terms further!"
+
+        # Fallback greetings / explanations
+        # Try matching simple topic names
+        if topics:
+            for t in topics:
+                if t.lower() in query:
+                    return f"Ah, {username}! '{t}' is one of your active study topics. It is covered in your course material. Try creating flashcards or practicing a quiz on '{t}' to reinforce your memory!"
+
+        # General helper message
+        return f"Hello {username}! I am your AI Study Buddy. I can explain concepts from your uploaded PDF slides, show your active study topics, identify your quiz weak areas, or check your login streak (🔥 {streak}d). What would you like to review today?"
+
 
 if __name__ == "__main__":
     engine = NLPEngine()

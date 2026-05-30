@@ -66,6 +66,7 @@ def upload_pdf():
     concepts = [t["topic"] for t in topics]
 
     u_id = get_current_user_id()
+    db_manager.save_user_document(u_id, file.filename, text)
 
     # Pre-generate flashcards and study plan, then write them to DB
     flashcards = nlp.generate_flashcards(topics)
@@ -562,6 +563,47 @@ def generate_topic_quiz():
         })
         
     return jsonify({"questions": quiz})
+
+
+@app.route('/api/chat', methods=['POST'])
+def chat():
+    """AI Conversational Tutor endpoint using user profiles and PDF context."""
+    u_id = get_current_user_id()
+    data = request.json or {}
+    message = data.get("message", "")
+    
+    if not message:
+        return jsonify({"error": "Missing message"}), 400
+
+    # Retrieve profile data
+    conn = db_manager.get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute("SELECT username, streak FROM users WHERE id = ?", (u_id,))
+    user_row = cursor.fetchone()
+    
+    username = user_row["username"] if user_row else "Student"
+    streak = user_row["streak"] if user_row else 1
+    
+    # Retrieve weak areas
+    cursor.execute("SELECT DISTINCT topic FROM quiz_scores WHERE user_id = ? AND score < 60 AND topic != 'Overall Diagnostic'", (u_id,))
+    weak_areas = [r["topic"] for r in cursor.fetchall()]
+    conn.close()
+
+    # Retrieve flashcard topics
+    cards = db_manager.get_flashcards(u_id)
+    topics = list(set([c["topic"] for c in cards]))
+
+    # Retrieve user PDF slides document
+    doc = db_manager.get_user_document(u_id)
+    pdf_text = doc["file_text"] if doc else ""
+    filename = doc["filename"] if doc else None
+
+    # Generate reply
+    reply = nlp.generate_chat_response(message, pdf_text, username, streak, weak_areas, topics)
+    return jsonify({
+        "response": reply,
+        "filename": filename
+    })
 
 
 if __name__ == '__main__':

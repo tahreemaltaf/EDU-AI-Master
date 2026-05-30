@@ -8,7 +8,8 @@ import {
     Layers,
     User,
     LogOut,
-    Flame
+    Flame,
+    MessageSquare
 } from 'lucide-react';
 import axios from 'axios';
 
@@ -172,6 +173,10 @@ function App() {
 
                         <Link to="/flashcards" className="nav-item">
                             <Layers size={16} /> Flashcards
+                        </Link>
+
+                        <Link to="/study-chat" className="nav-item">
+                            <MessageSquare size={16} /> AI Chat
                         </Link>
 
                         <Link to="/analytics" className="nav-item">

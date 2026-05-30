@@ -84,6 +84,17 @@ def init_db():
         )
     """)
     
+    # 6. User Documents Table
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS user_documents (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER,
+            filename TEXT NOT NULL,
+            file_text TEXT NOT NULL,
+            FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
+        )
+    """)
+    
     conn.commit()
     conn.close()
 
@@ -401,4 +412,27 @@ def log_task_hours(user_id, task_idx, hours):
         
     conn.close()
     return success
+
+# ── User Documents Operations ──────────────────────────────────────────
+
+def save_user_document(user_id, filename, file_text):
+    """Save full PDF extracted text for the user, replacing previous document text."""
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute("DELETE FROM user_documents WHERE user_id = ?", (user_id,))
+    cursor.execute("INSERT INTO user_documents (user_id, filename, file_text) VALUES (?, ?, ?)", (user_id, filename, file_text))
+    conn.commit()
+    conn.close()
+
+def get_user_document(user_id):
+    """Retrieve the uploaded document text for the user."""
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute("SELECT filename, file_text FROM user_documents WHERE user_id = ? LIMIT 1", (user_id,))
+    row = cursor.fetchone()
+    conn.close()
+    if row:
+        return {"filename": row["filename"], "file_text": row["file_text"]}
+    return None
+
 
