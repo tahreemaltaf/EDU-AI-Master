@@ -125,6 +125,12 @@ def analyse_weak_areas():
         score = 100 if r.get("correct") else 0
         db_manager.save_quiz_score(u_id, r["topic"], score)
 
+    # Save overall quiz score to quiz_scores table (with topic "Overall Diagnostic")
+    correct_count = sum(1 for r in quiz_results if r.get("correct"))
+    total_count = len(quiz_results)
+    overall_percentage = round((correct_count / max(total_count, 1)) * 100)
+    db_manager.save_quiz_score(u_id, "Overall Diagnostic", overall_percentage)
+
     analysis = scheduler.analyse_weak_areas(quiz_results)
     plan = scheduler.generate_personalised_plan(analysis)
     db_manager.save_study_plan(u_id, plan)
@@ -133,6 +139,7 @@ def analyse_weak_areas():
         "weak_areas": analysis,
         "study_plan": plan
     })
+
 
 @app.route('/api/study-plan', methods=['GET', 'POST'])
 def handle_study_plan():
@@ -369,5 +376,63 @@ def generate_summary():
     }
     return jsonify({"summary": json.dumps(summary_data)})
 
+
+@app.route('/api/quiz-history', methods=['GET'])
+def get_quiz_history():
+    """Retrieve quiz scores of the user under Overall Diagnostic category."""
+    u_id = get_current_user_id()
+    conn = db_manager.get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute("""
+        SELECT score, date FROM quiz_scores 
+        WHERE user_id = ? AND topic = 'Overall Diagnostic' 
+        ORDER BY id ASC
+    """, (u_id,))
+    rows = cursor.fetchall()
+    conn.close()
+    
+    scores = [r["score"] for r in rows]
+    labels = [f"Quiz {i+1}" for i in range(len(scores))]
+    
+    return jsonify({
+        "labels": labels,
+        "scores": scores
+    })
+
+
+@app.route('/api/study-progress', methods=['GET'])
+def get_study_progress():
+    """Calculate and return study hours mapped to weekdays based on checklist completion."""
+    u_id = get_current_user_id()
+    plan = db_manager.get_study_plan(u_id)
+    
+    weekly_hours = {
+        "Mon": 0.0, "Tue": 0.0, "Wed": 0.0, "Thu": 0.0, "Fri": 0.0, "Sat": 0.0, "Sun": 0.0
+    }
+    
+    for task in plan:
+        if task.get("completed"):
+            try:
+                dt = datetime.strptime(task["date"], "%Y-%m-%d")
+                day_name = dt.strftime("%a")  # "Mon", "Tue", etc.
+                if day_name in weekly_hours:
+                    weekly_hours[day_name] += 1.5  # 1.5 hours allocated per task
+            except Exception:
+                pass
+                
+    return jsonify({
+        "progress": [
+            weekly_hours["Mon"],
+            weekly_hours["Tue"],
+            weekly_hours["Wed"],
+            weekly_hours["Thu"],
+            weekly_hours["Fri"],
+            weekly_hours["Sat"],
+            weekly_hours["Sun"]
+        ]
+    })
+
+
 if __name__ == '__main__':
     app.run(debug=True, port=5000)
+
