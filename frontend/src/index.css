@@ -211,3 +211,84 @@ body {
     transform: rotate(360deg);
   }
 }
+
+/* --- FullCalendar Dark Glassmorphism Styling --- */
+.fc {
+    --fc-border-color: var(--glass-border);
+    --fc-daygrid-event-dot-width: 8px;
+    font-family: var(--font-body);
+}
+
+.fc .fc-toolbar-title {
+    font-family: var(--font-heading);
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--text-main);
+}
+
+.fc .fc-button-primary {
+    background-color: rgba(255, 255, 255, 0.03);
+    border: 1px solid var(--glass-border);
+    color: var(--text-main);
+    font-weight: 600;
+    text-transform: capitalize;
+    border-radius: 10px;
+    padding: 8px 16px;
+    transition: all 0.25s ease;
+}
+
+.fc .fc-button-primary:hover {
+    background-color: var(--primary);
+    border-color: var(--primary);
+    color: white;
+}
+
+.fc .fc-button-primary:disabled {
+    background-color: rgba(255, 255, 255, 0.01);
+    border-color: var(--glass-border);
+    color: var(--text-muted);
+}
+
+.fc .fc-button-active {
+    background-color: var(--primary) !important;
+    border-color: var(--primary) !important;
+}
+
+.fc .fc-col-header-cell {
+    background-color: rgba(255, 255, 255, 0.02);
+    padding: 10px 0;
+    font-weight: 700;
+    color: var(--text-muted);
+    font-family: var(--font-heading);
+}
+
+.fc .fc-daygrid-day {
+    transition: background-color 0.2s ease;
+}
+
+.fc .fc-daygrid-day:hover {
+    background-color: rgba(255, 255, 255, 0.02);
+}
+
+.fc .fc-day-today {
+    background-color: rgba(6, 182, 212, 0.05) !important;
+}
+
+.fc-event {
+    border-radius: 8px !important;
+    padding: 4px 8px !important;
+    font-size: 0.85rem !important;
+    font-weight: 600 !important;
+    cursor: grab !important;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.fc-event:active {
+    cursor: grabbing !important;
+    transform: scale(0.98);
+}
+
+.fc-event-main {
+    padding: 2px 0;
+}

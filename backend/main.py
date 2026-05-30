@@ -233,5 +233,26 @@ def update_progress():
     })
 
 
+@app.route('/api/update-task-date', methods=['POST'])
+def update_task_date():
+    """Update date of a specific study plan task by index."""
+    data = request.json or {}
+    idx = data.get("index")
+    new_date = data.get("date")
+    if idx is None or new_date is None:
+        return jsonify({"error": "Missing index or date"}), 400
+    try:
+        idx = int(idx)
+        if 0 <= idx < len(_session["study_plan"]):
+            _session["study_plan"][idx]["date"] = new_date
+            return jsonify({
+                "message": "Task date updated successfully",
+                "study_plan": _session["study_plan"]
+            })
+        return jsonify({"error": "Index out of bounds"}), 400
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
 if __name__ == '__main__':
     app.run(debug=True, port=5000)
