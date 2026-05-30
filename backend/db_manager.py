@@ -36,9 +36,16 @@ def init_db():
             type TEXT,
             date TEXT,
             completed INTEGER DEFAULT 0,
+            logged_hours REAL DEFAULT 0.0,
             FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
         )
     """)
+    
+    # Ensure existing tables have the logged_hours column
+    try:
+        cursor.execute("ALTER TABLE study_plans ADD COLUMN logged_hours REAL DEFAULT 0.0")
+    except sqlite3.OperationalError:
+        pass
     
     # 3. Flashcards Table
     cursor.execute("""
@@ -62,6 +69,17 @@ def init_db():
             topic TEXT,
             score INTEGER,
             date TEXT,
+            FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
+        )
+    """)
+    
+    # 5. Study Logs Table
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS study_logs (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER,
+            hours REAL NOT NULL,
+            date TEXT NOT NULL,
             FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
         )
     """)
@@ -136,8 +154,8 @@ def save_study_plan(user_id, plan_list):
     
     for item in plan_list:
         cursor.execute("""
-            INSERT INTO study_plans (user_id, day, topic, activity, type, date, completed)
-            VALUES (?, ?, ?, ?, ?, ?, ?)
+            INSERT INTO study_plans (user_id, day, topic, activity, type, date, completed, logged_hours)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
         """, (
             user_id, 
             item.get("day", 1), 
@@ -145,7 +163,8 @@ def save_study_plan(user_id, plan_list):
             item.get("activity"), 
             item.get("type", "study"), 
             item.get("date"),
-            1 if item.get("completed") or item.get("status") == "completed" else 0
+            1 if item.get("completed") or item.get("status") == "completed" else 0,
+            item.get("logged_hours", 0.0)
         ))
         
     conn.commit()
@@ -169,7 +188,8 @@ def get_study_plan(user_id):
             "type": r["type"],
             "date": r["date"],
             "completed": True if r["completed"] == 1 else False,
-            "status": "completed" if r["completed"] == 1 else "upcoming"
+            "status": "completed" if r["completed"] == 1 else "upcoming",
+            "logged_hours": r["logged_hours"] if "logged_hours" in r.keys() else 0.0
         })
     return plan
 
@@ -331,3 +351,54 @@ def get_quiz_scores(user_id):
     rows = cursor.fetchall()
     conn.close()
     return [{"topic": r["topic"], "score": r["score"], "date": r["date"]} for r in rows]
+
+# ── Study Logs Operations ─────────────────────────────────────────────
+
+def log_study_hours(user_id, hours, date):
+    """Log study hours for a user. If a log exists for that day, aggregate the hours."""
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    
+    # Check if a log entry already exists for this user and date
+    cursor.execute("SELECT id, hours FROM study_logs WHERE user_id = ? AND date = ?", (user_id, date))
+    row = cursor.fetchone()
+    
+    if row:
+        new_hours = row["hours"] + hours
+        cursor.execute("UPDATE study_logs SET hours = ? WHERE id = ?", (new_hours, row["id"]))
+    else:
+        cursor.execute("INSERT INTO study_logs (user_id, hours, date) VALUES (?, ?, ?)", (user_id, hours, date))
+        
+    conn.commit()
+    conn.close()
+
+def get_study_logs(user_id):
+    """Retrieve all study logs for a user."""
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute("SELECT hours, date FROM study_logs WHERE user_id = ? ORDER BY date ASC", (user_id,))
+    rows = cursor.fetchall()
+    conn.close()
+    return [{"hours": r["hours"], "date": r["date"]} for r in rows]
+
+def log_task_hours(user_id, task_idx, hours):
+    """Log study hours specifically to a checklist task (by index order) and mark it completed."""
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    
+    cursor.execute("SELECT id, logged_hours FROM study_plans WHERE user_id = ? ORDER BY id ASC", (user_id,))
+    rows = cursor.fetchall()
+    
+    if 0 <= task_idx < len(rows):
+        target_id = rows[task_idx]["id"]
+        current_hours = rows[task_idx]["logged_hours"] if rows[task_idx]["logged_hours"] is not None else 0.0
+        new_hours = current_hours + hours
+        cursor.execute("UPDATE study_plans SET logged_hours = ?, completed = 1 WHERE id = ?", (new_hours, target_id))
+        conn.commit()
+        success = True
+    else:
+        success = False
+        
+    conn.close()
+    return success
+

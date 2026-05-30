@@ -34,6 +34,7 @@ const Analytics = () => {
     const [weakAreas, setWeakAreas] = useState([]);
     const [quizHistory, setQuizHistory] = useState({ labels: [], scores: [] });
     const [studyProgress, setStudyProgress] = useState([0, 0, 0, 0, 0, 0, 0]);
+    const [studyLogs, setStudyLogs] = useState([]);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
@@ -48,11 +49,13 @@ const Analytics = () => {
                 setWeakAreas(weakAreasResp.data.weak_areas || []);
                 setQuizHistory(historyResp.data || { labels: [], scores: [] });
                 setStudyProgress(progressResp.data.progress || [0, 0, 0, 0, 0, 0, 0]);
+                setStudyLogs(progressResp.data.logs || []);
             } catch (e) {
                 console.error("Failed to load analytics data:", e);
                 setWeakAreas([]);
                 setQuizHistory({ labels: [], scores: [] });
                 setStudyProgress([0, 0, 0, 0, 0, 0, 0]);
+                setStudyLogs([]);
             } finally {
                 setLoading(false);
             }
@@ -62,7 +65,7 @@ const Analytics = () => {
 
     const hasQuizData = quizHistory.scores && quizHistory.scores.length > 0;
     const hasWeakAreasData = weakAreas.length > 0;
-    const hasStudyData = studyProgress.some(h => h > 0);
+    const hasStudyData = studyProgress.some(h => h > 0) || studyLogs.length > 0;
     const hasAnyData = hasQuizData || hasWeakAreasData || hasStudyData;
 
     const topics = weakAreas.map(a => a.topic);
@@ -216,6 +219,65 @@ const Analytics = () => {
                         ) : (
                             <div style={{ width: '100%', padding: '3rem', textAlign: 'center', background: 'rgba(255,255,255,0.01)', borderRadius: '16px', border: '1px dashed var(--glass-border)' }}>
                                 <p style={{ color: 'var(--text-muted)' }}>Requires diagnostic quiz completion to classify weak/strong topics.</p>
+                            </div>
+                        )}
+                    </div>
+                )}
+
+                {/* Detailed Study Duration Logs Card */}
+                {!loading && hasAnyData && (
+                    <div className="glass-card" style={{ gridColumn: 'span 3', marginTop: '1.5rem' }}>
+                        <h3 style={{ marginBottom: '1.5rem', fontWeight: '700' }}>Detailed Study Logs</h3>
+                        {studyLogs.length > 0 ? (
+                            <div style={{ overflowX: 'auto' }}>
+                                <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', minWidth: '600px' }}>
+                                    <thead>
+                                        <tr style={{ borderBottom: '1px solid var(--glass-border)', color: 'var(--text-muted)', fontSize: '0.9rem' }}>
+                                            <th style={{ padding: '12px 16px' }}>Topic / Activity</th>
+                                            <th style={{ padding: '12px 16px' }}>Category</th>
+                                            <th style={{ padding: '12px 16px' }}>Date</th>
+                                            <th style={{ padding: '12px 16px', textAlign: 'right' }}>Time Spent</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {studyLogs.map((log, idx) => {
+                                            const totalMinutes = Math.round(log.hours * 60);
+                                            let durationStr = '';
+                                            if (totalMinutes < 60) {
+                                                durationStr = `${totalMinutes} min${totalMinutes !== 1 ? 's' : ''}`;
+                                            } else {
+                                                const hrs = Math.floor(totalMinutes / 60);
+                                                const mins = totalMinutes % 60;
+                                                durationStr = mins > 0 ? `${hrs}h ${mins}m` : `${hrs} hr${hrs !== 1 ? 's' : ''}`;
+                                            }
+
+                                            return (
+                                                <tr key={idx} style={{ borderBottom: '1px solid rgba(255, 255, 255, 0.02)', fontSize: '0.95rem' }}>
+                                                    <td style={{ padding: '16px', fontWeight: '600', color: '#fff' }}>{log.topic}</td>
+                                                    <td style={{ padding: '16px', color: 'var(--text-muted)' }}>
+                                                        <span style={{ 
+                                                            fontSize: '0.75rem', 
+                                                            background: log.type === 'task' ? 'rgba(99,102,241,0.12)' : 'rgba(16,185,129,0.12)', 
+                                                            color: log.type === 'task' ? '#a5b4fc' : '#34d399', 
+                                                            padding: '2px 8px', 
+                                                            borderRadius: '8px',
+                                                            fontWeight: '600',
+                                                            border: log.type === 'task' ? '1px solid rgba(99,102,241,0.2)' : '1px solid rgba(16,185,129,0.2)'
+                                                        }}>
+                                                            {log.type === 'task' ? 'Plan Checklist' : 'Stopwatch Log'}
+                                                        </span>
+                                                    </td>
+                                                    <td style={{ padding: '16px', color: 'var(--text-muted)' }}>{log.date}</td>
+                                                    <td style={{ padding: '16px', textAlign: 'right', fontWeight: '700', color: '#818cf8' }}>{durationStr}</td>
+                                                </tr>
+                                            );
+                                        })}
+                                    </tbody>
+                                </table>
+                            </div>
+                        ) : (
+                            <div style={{ padding: '3rem', textAlign: 'center', background: 'rgba(255,255,255,0.01)', borderRadius: '16px', border: '1px dashed var(--glass-border)' }}>
+                                <p style={{ color: 'var(--text-muted)' }}>No study logs recorded yet. Start a study session timer on your Planner to register study logs.</p>
                             </div>
                         )}
                     </div>

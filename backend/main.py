@@ -402,23 +402,59 @@ def get_quiz_history():
 
 @app.route('/api/study-progress', methods=['GET'])
 def get_study_progress():
-    """Calculate and return study hours mapped to weekdays based on checklist completion."""
+    """Calculate and return study hours mapped to weekdays and detailed logs list."""
     u_id = get_current_user_id()
     plan = db_manager.get_study_plan(u_id)
+    logs = db_manager.get_study_logs(u_id)
     
     weekly_hours = {
         "Mon": 0.0, "Tue": 0.0, "Wed": 0.0, "Thu": 0.0, "Fri": 0.0, "Sat": 0.0, "Sun": 0.0
     }
     
+    task_logs = []
     for task in plan:
         if task.get("completed"):
             try:
                 dt = datetime.strptime(task["date"], "%Y-%m-%d")
                 day_name = dt.strftime("%a")  # "Mon", "Tue", etc.
                 if day_name in weekly_hours:
-                    weekly_hours[day_name] += 1.5  # 1.5 hours allocated per task
+                    hours_to_add = task.get("logged_hours", 0.0)
+                    if hours_to_add == 0.0:
+                        hours_to_add = 1.5  # default allocation per completed task if untimed
+                    weekly_hours[day_name] += hours_to_add
             except Exception:
                 pass
+                
+            hours_val = task.get("logged_hours", 0.0)
+            if hours_val > 0:
+                task_logs.append({
+                    "type": "task",
+                    "topic": task["topic"],
+                    "activity": task.get("activity") or "Study",
+                    "date": task["date"],
+                    "hours": hours_val
+                })
+                
+    general_logs = []
+    for log in logs:
+        try:
+            dt = datetime.strptime(log["date"], "%Y-%m-%d")
+            day_name = dt.strftime("%a")
+            if day_name in weekly_hours:
+                weekly_hours[day_name] += log["hours"]
+        except Exception:
+            pass
+            
+        general_logs.append({
+            "type": "general",
+            "topic": "General Study Session",
+            "activity": "Self Study",
+            "date": log["date"],
+            "hours": log["hours"]
+        })
+        
+    all_logs = task_logs + general_logs
+    all_logs.sort(key=lambda x: x["date"], reverse=True)
                 
     return jsonify({
         "progress": [
@@ -429,8 +465,59 @@ def get_study_progress():
             weekly_hours["Fri"],
             weekly_hours["Sat"],
             weekly_hours["Sun"]
-        ]
+        ],
+        "logs": all_logs
     })
+
+
+@app.route('/api/log-study-hours', methods=['POST'])
+def log_study_hours():
+    """Log study hours manually or from stopwatch timer."""
+    u_id = get_current_user_id()
+    data = request.json or {}
+    hours = data.get("hours")
+    date = data.get("date")
+    
+    if hours is None or not date:
+        return jsonify({"error": "Missing hours or date"}), 400
+        
+    try:
+        hours_float = float(hours)
+        if hours_float <= 0:
+            return jsonify({"error": "Hours must be greater than zero"}), 400
+    except ValueError:
+        return jsonify({"error": "Hours must be a number"}), 400
+        
+    db_manager.log_study_hours(u_id, hours_float, date)
+    return jsonify({"success": True, "message": f"Successfully logged {hours_float} study hours."})
+
+
+@app.route('/api/log-task-hours', methods=['POST'])
+def log_task_hours():
+    """Log study hours specifically to a checklist task (by index order) and mark it completed."""
+    u_id = get_current_user_id()
+    data = request.json or {}
+    task_idx = data.get("task_index")
+    hours = data.get("hours")
+    
+    if task_idx is None or hours is None:
+        return jsonify({"error": "Missing task_index or hours"}), 400
+        
+    try:
+        task_idx_int = int(task_idx)
+        hours_float = float(hours)
+        if hours_float <= 0:
+            return jsonify({"error": "Hours must be greater than zero"}), 400
+    except ValueError:
+        return jsonify({"error": "Invalid task_index or hours value"}), 400
+        
+    success = db_manager.log_task_hours(u_id, task_idx_int, hours_float)
+    if success:
+        return jsonify({"success": True, "message": f"Successfully logged {hours_float} hours to task."})
+    else:
+        return jsonify({"error": "Task index out of bounds"}), 404
+
+
 
 
 @app.route('/api/generate-topic-quiz', methods=['POST'])
