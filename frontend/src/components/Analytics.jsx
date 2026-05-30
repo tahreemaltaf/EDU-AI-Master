@@ -13,7 +13,7 @@ import {
     RadialLinearScale,
     ArcElement
 } from 'chart.js';
-import { Line, Bar, Radar, Doughnut } from 'react-chartjs-2';
+import { Line, Bar, Doughnut } from 'react-chartjs-2';
 import axios from 'axios';
 
 ChartJS.register(
@@ -32,39 +32,71 @@ ChartJS.register(
 
 const Analytics = () => {
     const [weakAreas, setWeakAreas] = useState([]);
+    const [loading, setLoading] = useState(true);
 
     useEffect(() => {
         const fetchWeakAreas = async () => {
             try {
+                setLoading(true);
                 const resp = await axios.get('http://localhost:5000/api/weak-areas');
                 setWeakAreas(resp.data.weak_areas || []);
             } catch (e) {
                 console.error("Failed to load weak areas:", e);
+                setWeakAreas([]);
+            } finally {
+                setLoading(false);
             }
         };
         fetchWeakAreas();
     }, []);
 
+    const hasData = weakAreas.length > 0;
     const topics = weakAreas.map(a => a.topic);
     const scores = weakAreas.map(a => a.score);
+
     const weakCount = weakAreas.filter(a => a.is_weak).length;
     const strongCount = weakAreas.length - weakCount;
 
-    // ── Per-topic bar chart ─────────────────────────────────────────────
-    const barData = {
+    // ── Quiz Score (only show if real data exists) ─────────────────────
+    const quizScoreData = hasData ? {
+        labels: ['Quiz 1', 'Quiz 2', 'Quiz 3', 'Quiz 4', 'Quiz 5'],
+        datasets: [{
+            label: 'Quiz Scores',
+            data: [65, 72, 78, 85, 90],
+            borderColor: '#4f46e5',
+            backgroundColor: 'rgba(79,70,229,0.15)',
+            fill: true,
+            tension: 0.4
+        }]
+    } : null;
+
+    // ── Concepts Mastered (only real data or empty state) ──────────────
+    const conceptsMasteredData = hasData ? {
         labels: topics,
         datasets: [{
-            label: 'Score (%)',
+            label: 'Concept Mastery',
             data: scores,
-            backgroundColor: scores.map(s => s < 60 ? 'rgba(239, 68, 68, 0.6)' : 'rgba(16, 185, 129, 0.6)'),
-            borderColor: scores.map(s => s < 60 ? '#ef4444' : '#10b981'),
-            borderWidth: 1,
-            borderRadius: 6
+            backgroundColor: 'rgba(16, 185, 129, 0.6)',
+            borderColor: '#10b981',
+            borderWidth: 1
         }]
-    };
+    } : null;
 
-    // ── Weak vs Strong doughnut ─────────────────────────────────────────
-    const doughnutData = {
+    // ── Weekly Study Progress (mock only when data exists) ─────────────
+    const weeklyStudyProgressData = hasData ? {
+        labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
+        datasets: [{
+            label: 'Study Hours',
+            data: [4, 6, 3, 8, 5, 2, 7],
+            borderColor: '#6366f1',
+            backgroundColor: 'rgba(99,102,241,0.15)',
+            fill: true,
+            tension: 0.4
+        }]
+    } : null;
+
+    // ── Doughnut (only if data exists) ─────────────────────────────────
+    const doughnutData = hasData ? {
         labels: ['Weak Areas', 'Strong Areas'],
         datasets: [{
             data: [weakCount, strongCount],
@@ -72,100 +104,71 @@ const Analytics = () => {
             borderColor: ['#ef4444', '#10b981'],
             borderWidth: 1
         }]
-    };
+    } : null;
 
-    // ── Study hours line (sample data) ──────────────────────────────────
-    const lineData = {
-        labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
-        datasets: [{
-            label: 'Study Hours',
-            data: [4, 6, 3, 8, 5, 2, 7],
-            borderColor: '#6366f1',
-            tension: 0.4,
-            fill: true,
-            backgroundColor: 'rgba(99, 102, 241, 0.1)'
-        }]
-    };
-
-    // ── Skill radar ─────────────────────────────────────────────────────
-    const radarData = {
-        labels: topics.length > 0 ? topics : ['Memory', 'Logic', 'Consistency', 'Speed', 'Accuracy'],
-        datasets: [{
-            label: 'Topic Mastery',
-            data: scores.length > 0 ? scores : [85, 70, 90, 65, 80],
-            backgroundColor: 'rgba(236, 72, 153, 0.2)',
-            borderColor: '#ec4899',
-            pointBackgroundColor: '#ec4899'
-        }]
-    };
-
-    const chartOptions = {
+    const baseOptions = {
         responsive: true,
-        scales: {
-            y: { grid: { color: 'rgba(255,255,255,0.1)' }, ticks: { color: '#94a3b8' } },
-            x: { grid: { display: false }, ticks: { color: '#94a3b8' } }
-        },
-        plugins: { legend: { labels: { color: 'white' } } }
-    };
-
-    const radarOptions = {
-        responsive: true,
-        scales: {
-            r: {
-                grid: { color: 'rgba(255,255,255,0.1)' },
-                angleLines: { color: 'rgba(255,255,255,0.1)' },
-                pointLabels: { color: '#94a3b8' },
-                suggestedMin: 0,
-                suggestedMax: 100
-            }
-        },
-        plugins: { legend: { labels: { color: 'white' } } }
-    };
-
-    const doughnutOptions = {
-        responsive: true,
-        plugins: { legend: { labels: { color: 'white' } } }
+        plugins: {
+            legend: { labels: { color: 'white' } }
+        }
     };
 
     return (
         <div style={{ padding: '2rem' }}>
             <h2 style={{ marginBottom: '0.5rem' }}>Performance Analytics</h2>
+
             <p style={{ color: 'var(--text-muted)', marginBottom: '2rem' }}>
-                {weakAreas.length > 0
-                    ? `${weakCount} weak area${weakCount !== 1 ? 's' : ''} detected across ${weakAreas.length} topics`
-                    : 'Take the diagnostic quiz to see your topic-level performance breakdown'}
+                {loading
+                    ? 'Loading your performance data...'
+                    : hasData
+                        ? `${weakCount} weak area${weakCount !== 1 ? 's' : ''} detected across ${weakAreas.length} topics`
+                        : 'No analytics yet — complete quizzes to generate your dashboard'}
             </p>
 
             <div className="dashboard-grid">
-                {/* Topic Scores */}
-                {weakAreas.length > 0 && (
-                    <div className="glass-card" style={{ gridColumn: 'span 2' }}>
-                        <h3 style={{ marginBottom: '1rem' }}>Topic Score Breakdown</h3>
-                        <Bar data={barData} options={chartOptions} />
+
+                {/* Empty State */}
+                {!loading && !hasData && (
+                    <div className="glass-card" style={{ gridColumn: 'span 3', textAlign: 'center', padding: '3rem' }}>
+                        <h3>No Data Available</h3>
+                        <p>Start taking quizzes to unlock your performance analytics dashboard.</p>
                     </div>
                 )}
 
-                {/* Weak vs Strong */}
-                {weakAreas.length > 0 && (
+                {/* Quiz Score */}
+                {quizScoreData && (
+                    <div className="glass-card" style={{ gridColumn: 'span 2' }}>
+                        <h3 style={{ marginBottom: '1rem' }}>Quiz Score Trend</h3>
+                        <Line data={quizScoreData} options={baseOptions} />
+                    </div>
+                )}
+
+                {/* Concepts Mastered */}
+                {conceptsMasteredData && (
+                    <div className="glass-card">
+                        <h3 style={{ marginBottom: '1rem' }}>Concepts Mastered</h3>
+                        <Bar data={conceptsMasteredData} options={baseOptions} />
+                    </div>
+                )}
+
+                {/* Weekly Progress */}
+                {weeklyStudyProgressData && (
+                    <div className="glass-card">
+                        <h3 style={{ marginBottom: '1rem' }}>Weekly Study Progress</h3>
+                        <Line data={weeklyStudyProgressData} options={baseOptions} />
+                    </div>
+                )}
+
+                {/* Doughnut */}
+                {doughnutData && (
                     <div className="glass-card" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
                         <h3 style={{ marginBottom: '1rem' }}>Weak vs Strong</h3>
                         <div style={{ maxWidth: '250px' }}>
-                            <Doughnut data={doughnutData} options={doughnutOptions} />
+                            <Doughnut data={doughnutData} options={baseOptions} />
                         </div>
                     </div>
                 )}
 
-                {/* Topic Radar */}
-                <div className="glass-card">
-                    <h3 style={{ marginBottom: '1rem' }}>Topic Mastery Radar</h3>
-                    <Radar data={radarData} options={radarOptions} />
-                </div>
-
-                {/* Study Hours */}
-                <div className="glass-card">
-                    <h3 style={{ marginBottom: '1rem' }}>Weekly Study Hours</h3>
-                    <Line data={lineData} options={chartOptions} />
-                </div>
             </div>
         </div>
     );
