@@ -108,10 +108,105 @@ def analyse_weak_areas():
     })
 
 
-@app.route('/api/study-plan', methods=['GET'])
-def get_study_plan():
-    """Return the current personalised study plan."""
-    return jsonify({"study_plan": _session["study_plan"]})
+@app.route('/api/study-plan', methods=['GET', 'POST'])
+def handle_study_plan():
+    """Return or generate study plan."""
+    if request.method == 'POST':
+        data = request.json or {}
+        message = data.get("message", "")
+        
+        # Parse days from message
+        import re
+        days = 3
+        match = re.search(r'(\d+)\s*day', message.lower())
+        if match:
+            days = int(match.group(1))
+        elif "week" in message.lower():
+            days = 7
+            
+        topics = [t["topic"] for t in _session.get("topics", [])]
+        if not topics:
+            topics = ["Core Concepts", "Advanced Applications", "Key Methodologies", "Case Studies", "Review Questions"]
+            
+        plan = []
+        for day in range(1, days + 1):
+            topic_idx = (day - 1) % len(topics)
+            topic = topics[topic_idx]
+            
+            plan.append({
+                "time": f"Day {day} (Morning)",
+                "task": f"Deep dive study: {topic} (Read text notes & highlight key details)"
+            })
+            if day == days:
+                plan.append({
+                    "time": f"Day {day} (Afternoon)",
+                    "task": "Final practice mock exam covering all concepts"
+                })
+                plan.append({
+                    "time": f"Day {day} (Evening)",
+                    "task": "Review weak formulas/definitions and rest before exams"
+                })
+            else:
+                plan.append({
+                    "time": f"Day {day} (Afternoon)",
+                    "task": f"Test yourself on {topic}: Attempt flashcards & custom MCQ quiz"
+                })
+        return jsonify({"plan": plan})
+    else:
+        return jsonify({"study_plan": _session["study_plan"]})
+
+
+@app.route('/api/mcq', methods=['POST'])
+def generate_mcq():
+    """Generate MCQs from provided notes/context."""
+    data = request.json or {}
+    context = data.get("context", "")
+    if not context:
+        return jsonify({"questions": []})
+    
+    topics = nlp.extract_topics_with_context(context)
+    questions = nlp.generate_diagnostic_quiz(topics)
+    return jsonify({"questions": questions})
+
+
+@app.route('/api/summary', methods=['POST'])
+def generate_summary():
+    """Extract and summarize topics from notes/context."""
+    data = request.json or {}
+    text = data.get("text", "")
+    if not text:
+        return jsonify({"summary": json.dumps({"topics": []})})
+    
+    import re
+    topics = nlp.extract_topics_with_context(text)
+    
+    summary_topics = []
+    for t in topics:
+        topic_name = t["topic"]
+        context_snippet = t["context"]
+        
+        clean_text = text.replace('\n', ' ')
+        sentences = [s.strip() for s in re.split(r'(?<=[.!?])\s+', clean_text) if len(s.strip()) > 15]
+        
+        matching_sentences = []
+        for s in sentences:
+            if topic_name.lower() in s.lower() and s not in matching_sentences:
+                matching_sentences.append(s)
+                if len(matching_sentences) >= 2:
+                    break
+        
+        if not matching_sentences:
+            matching_sentences = [context_snippet]
+            
+        summary_topics.append({
+            "title": topic_name,
+            "summary": matching_sentences
+        })
+        
+    summary_data = {
+        "topics": summary_topics
+    }
+    return jsonify({"summary": json.dumps(summary_data)})
 
 
 @app.route('/api/weak-areas', methods=['GET'])
