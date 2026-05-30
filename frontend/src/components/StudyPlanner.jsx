@@ -147,6 +147,15 @@ const StudyPlanner = () => {
                 });
 
                 if (activeTaskIndex !== null) {
+                    // Schedule Recall Quiz 5 minutes from now
+                    const topicName = plan[activeTaskIndex].topic;
+                    const scheduledTime = Date.now() + 5 * 60 * 1000;
+                    localStorage.setItem('scheduledQuiz', JSON.stringify({
+                        topic: topicName,
+                        scheduledTime: scheduledTime
+                    }));
+                    window.dispatchEvent(new Event('storage')); // notify App.jsx
+
                     setCompleted(prev => ({ ...prev, [activeTaskIndex]: true }));
                     setPlan(prev => prev.map((item, idx) => idx === activeTaskIndex ? { ...item, logged_hours: (item.logged_hours || 0.0) + hoursToLog } : item));
                     setActiveTaskIndex(null);
