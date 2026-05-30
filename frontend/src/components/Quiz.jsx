@@ -19,9 +19,19 @@ const Quiz = () => {
     useEffect(() => {
         const fetchQuestions = async () => {
             try {
-                const response = await axios.post('http://localhost:5000/api/generate-quiz', {
-                    context: localStorage.getItem('studyContext') || ""
-                });
+                const params = new URLSearchParams(window.location.search);
+                const targetTopic = params.get('topic');
+
+                let response;
+                if (targetTopic) {
+                    response = await axios.post('http://localhost:5000/api/generate-topic-quiz', {
+                        topic: targetTopic
+                    });
+                } else {
+                    response = await axios.post('http://localhost:5000/api/generate-quiz', {
+                        context: localStorage.getItem('studyContext') || ""
+                    });
+                }
                 setQuestions(response.data.questions || []);
             } catch (error) {
                 console.error("Failed to fetch questions:", error);

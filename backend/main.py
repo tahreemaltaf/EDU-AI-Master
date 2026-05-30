@@ -433,6 +433,51 @@ def get_study_progress():
     })
 
 
+@app.route('/api/generate-topic-quiz', methods=['POST'])
+def generate_topic_quiz():
+    """Generate a custom quiz specifically for a chosen concept topic."""
+    u_id = get_current_user_id()
+    data = request.json or {}
+    topic = data.get("topic")
+    if not topic:
+        return jsonify({"error": "Missing topic"}), 400
+        
+    card = db_manager.get_flashcard_by_topic(u_id, topic)
+    
+    if card:
+        topics_with_context = [{
+            "topic": card["topic"],
+            "context": card["front"] + " " + card["back"]
+        }]
+    else:
+        topics_with_context = [{
+            "topic": topic,
+            "context": f"{topic} is a core concept that requires detailed review and practice."
+        }]
+        
+    quiz = nlp.generate_diagnostic_quiz(topics_with_context)
+    
+    # Generate minimum 3 questions for variety
+    if len(quiz) < 3:
+        quiz.append({
+            "topic": topic,
+            "question": f"Which of the following represents a primary function or characteristic of '{topic}'?",
+            "options": [topic, "A secondary unrelated method", "An abstract undefined framework", "None of the above"],
+            "correct_answer": topic,
+            "context_snippet": topics_with_context[0]["context"][:200]
+        })
+        quiz.append({
+            "topic": topic,
+            "question": f"True or False: The concept of '{topic}' is critical to optimizing learning outcomes in this module.",
+            "options": ["True", "False", "Cannot be determined", "Both"],
+            "correct_answer": "True",
+            "context_snippet": topics_with_context[0]["context"][:200]
+        })
+        
+    return jsonify({"questions": quiz})
+
+
 if __name__ == '__main__':
     app.run(debug=True, port=5000)
+
 

@@ -25,6 +25,26 @@ const Dashboard = () => {
     const [studyPlan, setStudyPlan] = useState([]);
     const [stats, setStats] = useState(null);
 
+    React.useEffect(() => {
+        const loadDashboard = async () => {
+            try {
+                const resp = await axios.get('http://localhost:5000/api/flashcards');
+                const cards = resp.data.flashcards || [];
+                const uniqueTopics = [...new Set(cards.map(c => c.topic))];
+                setConcepts(uniqueTopics);
+                if (uniqueTopics.length > 0) {
+                    setStats({
+                        flashcards: cards.length,
+                        questions: cards.length
+                    });
+                }
+            } catch (e) {
+                console.error("Failed to load dashboard data:", e);
+            }
+        };
+        loadDashboard();
+    }, []);
+
     const handleUpload = async () => {
 
         if (!file) return;
@@ -447,7 +467,9 @@ const Dashboard = () => {
                                                 : '1px solid var(--glass-border)',
                                         display: 'flex',
                                         justifyContent: 'space-between',
-                                        alignItems: 'center'
+                                        alignItems: 'center',
+                                        flexWrap: 'wrap',
+                                        gap: '10px'
                                     }}
                                 >
 
@@ -455,10 +477,26 @@ const Dashboard = () => {
                                         {concept}
                                     </span>
 
-                                    <CheckCircle2
-                                        size={18}
-                                        color="var(--primary)"
-                                    />
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                                        <Link 
+                                            to={`/quiz?topic=${encodeURIComponent(concept)}`}
+                                            className="btn-primary"
+                                            style={{ 
+                                                padding: '6px 12px', 
+                                                fontSize: '0.8rem',
+                                                borderRadius: '8px',
+                                                background: 'rgba(6, 182, 212, 0.1)',
+                                                border: '1px solid var(--primary)',
+                                                boxShadow: 'none'
+                                            }}
+                                        >
+                                            Practice Quiz
+                                        </Link>
+                                        <CheckCircle2
+                                            size={18}
+                                            color="var(--primary)"
+                                        />
+                                    </div>
 
                                 </div>
                             ))
