@@ -254,5 +254,85 @@ def update_task_date():
         return jsonify({"error": str(e)}), 500
 
 
+@app.route('/api/review-flashcard', methods=['POST'])
+def review_flashcard():
+    """Process spaced repetition rating for a topic flashcard and update study plan."""
+    data = request.json or {}
+    topic = data.get("topic")
+    quality = data.get("quality")  # 0 to 3
+    
+    if not topic or quality is None:
+        return jsonify({"error": "Missing topic or quality rating"}), 400
+        
+    try:
+        quality = int(quality)
+        if not (0 <= quality <= 3):
+            return jsonify({"error": "Quality rating must be 0, 1, 2, or 3"}), 400
+    except Exception:
+        return jsonify({"error": "Invalid quality rating"}), 400
+        
+    # Find flashcard in session or create default tracking values
+    card = None
+    for f in _session.get("flashcards", []):
+        if f.get("topic", "").lower() == topic.lower():
+            card = f
+            break
+            
+    if not card:
+        # Fallback: Create dynamic card in session
+        card = {
+            "topic": topic,
+            "interval": 1,
+            "ease_factor": 2.5
+        }
+        _session.setdefault("flashcards", []).append(card)
+        
+    # Ensure tracking fields are initialized
+    current_interval = card.get("interval", 1)
+    ease_factor = card.get("ease_factor", 2.5)
+    
+    # Calculate next review date using SM-2 scheduler
+    next_interval, new_ease, next_review = scheduler.calculate_next_review(
+        current_interval, ease_factor, quality
+    )
+    
+    # Update tracking values in the card object
+    card["interval"] = next_interval
+    card["ease_factor"] = new_ease
+    
+    next_review_str = next_review.strftime("%Y-%m-%d")
+    
+    # Now update the date of the corresponding Spaced Review task in the study plan
+    updated_task = None
+    for task in _session.get("study_plan", []):
+        # Find review task for this topic
+        if task.get("topic", "").lower() == topic.lower() and task.get("type") == "review":
+            task["date"] = next_review_str
+            updated_task = task
+            break
+            
+    if not updated_task:
+        # If no review task exists yet, create one dynamically in the schedule
+        new_review_task = {
+            "day": len(_session["study_plan"]) + 1,
+            "topic": topic,
+            "date": next_review_str,
+            "activity": "Spaced Review",
+            "type": "review",
+            "status": "upcoming"
+        }
+        _session.setdefault("study_plan", []).append(new_review_task)
+        updated_task = new_review_task
+        
+    return jsonify({
+        "message": "Spaced repetition scheduler updated successfully",
+        "topic": topic,
+        "next_review": next_review_str,
+        "interval": next_interval,
+        "ease_factor": new_ease
+    })
+
+
+
 if __name__ == '__main__':
     app.run(debug=True, port=5000)
