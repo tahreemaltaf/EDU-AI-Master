@@ -564,6 +564,24 @@ def generate_topic_quiz():
         
     return jsonify({"questions": quiz})
 
+@app.route('/api/generate-hint', methods=['POST'])
+def generate_hint():
+    data = request.json
+
+    answer = data.get('answer', '')
+
+    words = answer.split()
+
+    hint = (
+        "Focus on: " +
+        " ".join(words[:10]) +
+        " ..."
+    )
+
+    return jsonify({
+        "hint": hint
+    })
+
 
 @app.route('/api/chat', methods=['POST'])
 def chat():
