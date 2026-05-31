@@ -6,7 +6,9 @@ import {
     BarChart3,
     Info,
     Layers,
-    MessageSquare
+    MessageSquare,
+    Flame,
+    Sparkles
 } from 'lucide-react';
 import axios from 'axios';
 
@@ -303,41 +305,117 @@ function App() {
                     </Routes>
                 </main>
 
-                {/* FLOATING QUIZ */}
-                {scheduledQuiz?.timeLeft > 0 && (
-                    <div
+                {/* Floating Quiz Countdown Badge */}
+                {scheduledQuiz && scheduledQuiz.timeLeft > 0 && (
+                    <div 
                         onClick={triggerQuizModalEarly}
                         style={{
                             position: 'fixed',
-                            bottom: 24,
-                            right: 24,
-                            padding: '12px 18px',
-                            borderRadius: 50,
-                            background: 'rgba(99,102,241,0.2)',
+                            bottom: '24px',
+                            right: '24px',
+                            zIndex: 9999,
+                            background: 'rgba(99, 102, 241, 0.15)',
+                            border: '1px solid rgba(99, 102, 241, 0.3)',
+                            backdropFilter: 'blur(12px)',
+                            borderRadius: '50px',
+                            padding: '12px 24px',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '10px',
                             color: '#fff',
-                            cursor: 'pointer'
+                            fontSize: '0.9rem',
+                            fontWeight: '600',
+                            cursor: 'pointer',
+                            boxShadow: '0 10px 30px rgba(0,0,0,0.3)',
+                            transition: 'transform 0.2s',
+                            animation: 'pulse 2s infinite'
                         }}
+                        onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.05)'}
+                        onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}
+                        title="Click to take quiz immediately (skip timer)"
                     >
-                        🔥 {scheduledQuiz.topic} in {formatTimerSecs(scheduledQuiz.timeLeft)}
+                        <Flame size={16} className="animate-pulse" color="#fbbf24" fill="#fbbf24" />
+                        <span>Verify "{scheduledQuiz.topic}" in {formatTimerSecs(scheduledQuiz.timeLeft)}</span>
+                        <span style={{ fontSize: '0.75rem', opacity: 0.6, textDecoration: 'underline' }}>(Take Now)</span>
                     </div>
                 )}
 
-                {/* MODAL */}
+                {/* Recall Quiz Confirmation Modal Overlay */}
                 {showRecallModal && (
                     <div style={{
                         position: 'fixed',
-                        inset: 0,
-                        background: 'rgba(0,0,0,0.7)',
+                        top: 0,
+                        left: 0,
+                        width: '100%',
+                        height: '100%',
+                        zIndex: 10000,
+                        background: 'rgba(0, 0, 0, 0.7)',
+                        backdropFilter: 'blur(8px)',
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center'
                     }}>
-                        <div className="glass-card" style={{ padding: 30 }}>
-                            <h3>Recall Quiz</h3>
-                            <p>Ready for {scheduledQuiz?.topic}?</p>
-
-                            <button onClick={handleCancelQuiz}>Cancel</button>
-                            <button onClick={handleConfirmQuiz}>Start</button>
+                        <div className="glass-card" style={{
+                            maxWidth: '440px',
+                            width: '100%',
+                            padding: '2.5rem',
+                            textAlign: 'center',
+                            border: '1px solid var(--glass-border)',
+                            boxShadow: '0 20px 50px rgba(0,0,0,0.5)',
+                            margin: '20px'
+                        }}>
+                            <div style={{
+                                width: '60px',
+                                height: '60px',
+                                borderRadius: '50%',
+                                background: 'rgba(99,102,241,0.15)',
+                                color: '#818cf8',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                margin: '0 auto 1.5rem'
+                            }}>
+                                <Sparkles size={30} color="#818cf8" />
+                            </div>
+                            <h3 style={{ fontSize: '1.5rem', fontWeight: '800', marginBottom: '0.75rem' }}>Recall Quiz Verification</h3>
+                            <p style={{ color: 'var(--text-muted)', marginBottom: '2rem', fontSize: '0.95rem', lineHeight: '1.6' }}>
+                                Are you ready to take a quick quiz on <strong style={{ color: '#fff' }}>"{scheduledQuiz?.topic}"</strong> to verify your understanding of this topic?
+                            </p>
+                            <div style={{ display: 'flex', gap: '12px' }}>
+                                <button 
+                                    onClick={handleCancelQuiz}
+                                    style={{
+                                        flex: 1,
+                                        padding: '12px',
+                                        borderRadius: '10px',
+                                        border: '1px solid var(--glass-border)',
+                                        background: 'rgba(255,255,255,0.02)',
+                                        color: '#fff',
+                                        fontWeight: '600',
+                                        cursor: 'pointer',
+                                        transition: 'all 0.2s'
+                                    }}
+                                >
+                                    Snooze / Cancel
+                                </button>
+                                <button 
+                                    onClick={handleConfirmQuiz}
+                                    style={{
+                                        flex: 1,
+                                        padding: '12px',
+                                        borderRadius: '10px',
+                                        border: 'none',
+                                        background: 'var(--primary)',
+                                        color: '#fff',
+                                        fontWeight: '600',
+                                        cursor: 'pointer',
+                                        boxShadow: '0 4px 15px rgba(99,102,241,0.3)',
+                                        transition: 'all 0.2s'
+                                    }}
+                                >
+                                    Take Quiz
+                                </button>
+                            </div>
                         </div>
                     </div>
                 )}
