@@ -162,39 +162,65 @@ function App() {
     const triggerQuizModalEarly = () => setShowRecallModal(true);
 
     // LOGIN SCREEN
-    if (!user) {
-        return (
-            <div style={{
-                display: 'flex',
-                justifyContent: 'center',
-                alignItems: 'center',
-                minHeight: '100vh'
+   if (!user) {
+    return (
+        <div style={{
+            display: 'flex',
+            justifyContent: 'center',
+            alignItems: 'center',
+            minHeight: '100vh',
+            background: '#020617'
+        }}>
+            <div className="glass-card" style={{
+                padding: 40,
+                width: 420,
+                borderRadius: 20,
+                background: 'rgba(255,255,255,0.05)',
+                border: '1px solid rgba(255,255,255,0.1)',
+                backdropFilter: 'blur(10px)',
+                color: 'white'
             }}>
-                <div className="glass-card" style={{ padding: 40, width: 420 }}>
-                    <h2>EduAI Master</h2>
+                <h2 style={{ textAlign: 'center', marginBottom: 20 }}>
+                    EduAI Master
+                </h2>
 
-                    <form onSubmit={handleLogin}>
-                        <input
-                            value={loginName}
-                            onChange={(e) => setLoginName(e.target.value)}
-                            placeholder="Enter username"
-                            style={{
-                                width: '100%',
-                                padding: 12,
-                                marginTop: 20
-                            }}
-                        />
+                <form onSubmit={handleLogin}>
+                    <input
+                        value={loginName}
+                        onChange={(e) => setLoginName(e.target.value)}
+                        placeholder="Enter username"
+                        style={{
+                            width: '100%',
+                            padding: 12,
+                            borderRadius: 10,
+                            border: '1px solid #334155',
+                            background: '#0f172a',
+                            color: 'white'
+                        }}
+                    />
 
-                        {error && <p style={{ color: 'red' }}>{error}</p>}
+                    {error && <p style={{ color: 'red', marginTop: 10 }}>{error}</p>}
 
-                        <button className="btn-primary" style={{ width: '100%', marginTop: 20 }}>
-                            Login
-                        </button>
-                    </form>
-                </div>
+                    <button
+                        className="btn-primary"
+                        style={{
+                            width: '100%',
+                            marginTop: 20,
+                            padding: 12,
+                            borderRadius: 10,
+                            background: '#6366f1',
+                            color: 'white',
+                            border: 'none',
+                            cursor: 'pointer'
+                        }}
+                    >
+                        Login
+                    </button>
+                </form>
             </div>
-        );
-    }
+        </div>
+    );
+}
 
     return (
         <Router>

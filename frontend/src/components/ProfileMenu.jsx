@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { User, Settings, Shield, LogOut, ChevronDown } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
-const ProfileMenu = ({ user, handleLogout }) => {
+const ProfileMenu = ({ user, onLogout }) => {
     const [open, setOpen] = useState(false);
     const menuRef = useRef(null);
 
@@ -82,9 +82,12 @@ const ProfileMenu = ({ user, handleLogout }) => {
                     </Link>
 
                     <button
-                        onClick={handleLogout}
-                        style={itemStyle}
-                    >
+    onClick={() => {
+        onLogout();
+        setOpen(false);
+    }}
+    style={itemStyle}
+>
                         <LogOut size={16} /> Logout
                     </button>
 
