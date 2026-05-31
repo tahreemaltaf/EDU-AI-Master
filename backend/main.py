@@ -716,6 +716,40 @@ def oral_evaluate():
     return jsonify(evaluation)
 
 
+@app.route('/api/oral-history', methods=['GET'])
+def get_oral_history():
+    """Retrieve oral test quiz scores history for the user."""
+    u_id = get_current_user_id()
+    conn = db_manager.get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute("""
+        SELECT topic, score, date FROM quiz_scores 
+        WHERE user_id = ? AND topic LIKE 'Oral: %' 
+        ORDER BY id DESC
+    """, (u_id,))
+    rows = cursor.fetchall()
+    conn.close()
+    
+    history = []
+    for r in rows:
+        topic_name = r["topic"].replace("Oral: ", "")
+        score = r["score"]
+        if score >= 75:
+            grade = "Mastered"
+        elif score >= 45:
+            grade = "Partial Match"
+        else:
+            grade = "Needs Review"
+            
+        history.append({
+            "topic": topic_name,
+            "score": score,
+            "grade": grade,
+            "date": r["date"]
+        })
+    return jsonify({"history": history})
+
+
 if __name__ == '__main__':
     app.run(debug=True, port=5000)
 
