@@ -273,6 +273,27 @@ def toggle_task_completion(user_id, task_idx):
 
 # ── Flashcard Operations ──────────────────────────────────────────────
 
+def add_flashcards(user_id, flashcards_list):
+    """Append new flashcards to the user's persistent flashcards list."""
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    
+    for card in flashcards_list:
+        cursor.execute("""
+            INSERT INTO flashcards (user_id, topic, front, back, interval, ease_factor)
+            VALUES (?, ?, ?, ?, ?, ?)
+        """, (
+            user_id, 
+            card.get("topic"), 
+            card.get("front"), 
+            card.get("back"),
+            card.get("interval", 1),
+            card.get("ease_factor", 2.5)
+        ))
+        
+    conn.commit()
+    conn.close()
+
 def save_flashcards(user_id, flashcards_list):
     """Replace flashcards list for a user."""
     conn = get_db_connection()

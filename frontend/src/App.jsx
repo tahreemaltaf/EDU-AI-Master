@@ -8,7 +8,8 @@ import {
     Layers,
     MessageSquare,
     Flame,
-    Sparkles
+    Sparkles,
+    Mic
 } from 'lucide-react';
 import axios from 'axios';
 
@@ -25,6 +26,7 @@ import About from './components/About';
 import McqGenerator from './components/McqGenerator';
 import StudyChat from './components/StudyChat';
 import TopicSummary from './components/TopicSummary';
+import VoiceNotes from './components/VoiceNotes';
 
 // Profile Pages
 import ProfilePage from "./components/ProfilePage";
@@ -246,6 +248,9 @@ function App() {
                         <Link to="/study-chat" className="nav-item">
                             <MessageSquare size={16} /> AI Chat
                         </Link>
+                        <Link to="/voice-notes" className="nav-item">
+                            <Mic size={16} /> Oral Test
+                        </Link>
                         <Link to="/analytics" className="nav-item">
                             <BarChart3 size={16} /> Performance
                         </Link>
@@ -298,6 +303,7 @@ function App() {
                         <Route path="/mcq" element={<McqGenerator />} />
                         <Route path="/study-chat" element={<StudyChat />} />
                         <Route path="/summary" element={<TopicSummary />} />
+                        <Route path="/voice-notes" element={<VoiceNotes />} />
 
                         <Route path="/profile" element={<ProfilePage />} />
                         <Route path="/settings" element={<SettingsPage />} />

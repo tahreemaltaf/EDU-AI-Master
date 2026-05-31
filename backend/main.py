@@ -624,6 +624,98 @@ def chat():
     })
 
 
+@app.route('/api/voice-summarize', methods=['POST'])
+def voice_summarize():
+    """Summarize voice notes transcripts."""
+    data = request.json or {}
+    transcript = data.get("transcript", "").strip()
+    if not transcript:
+        return jsonify({"error": "Transcript is empty"}), 400
+        
+    summary_bullets = nlp.summarize_transcript(transcript)
+    return jsonify({
+        "summary": summary_bullets
+    })
+
+
+@app.route('/api/voice-to-flashcards', methods=['POST'])
+def voice_to_flashcards():
+    """Generate and append flashcards from speech transcription to user's database."""
+    u_id = get_current_user_id()
+    data = request.json or {}
+    transcript = data.get("transcript", "").strip()
+    if not transcript:
+        return jsonify({"error": "Transcript is empty"}), 400
+        
+    generated_cards = nlp.generate_flashcards_from_text(transcript)
+    if generated_cards:
+        db_manager.add_flashcards(u_id, generated_cards)
+        
+    return jsonify({
+        "success": True,
+        "flashcards": generated_cards
+    })
+
+
+@app.route('/api/oral-question', methods=['POST'])
+def oral_question():
+    """Generate a conceptual question for an oral test on a specific topic."""
+    u_id = get_current_user_id()
+    data = request.json or {}
+    topic = data.get("topic")
+    if not topic:
+        return jsonify({"error": "Missing topic"}), 400
+        
+    doc = db_manager.get_user_document(u_id)
+    pdf_text = doc["file_text"] if doc else ""
+    
+    context = ""
+    if pdf_text:
+        clean_text = pdf_text.replace('\n', ' ')
+        sentences = [s.strip() for s in re.split(r'(?<=[.!?])\s+', clean_text) if len(s.strip()) > 15]
+        matching_s = [s for s in sentences if topic.lower() in s.lower()]
+        if matching_s:
+            context = " ".join(matching_s[:2])
+            
+    question = nlp.generate_oral_question(topic, context)
+    return jsonify({
+        "question": question
+    })
+
+
+@app.route('/api/oral-evaluate', methods=['POST'])
+def oral_evaluate():
+    """Evaluate user's spoken answer and log the score to SQLite."""
+    u_id = get_current_user_id()
+    data = request.json or {}
+    topic = data.get("topic")
+    question = data.get("question")
+    user_answer = data.get("user_answer")
+    
+    if not topic or not question or not user_answer:
+        return jsonify({"error": "Missing topic, question, or answer"}), 400
+        
+    doc = db_manager.get_user_document(u_id)
+    pdf_text = doc["file_text"] if doc else ""
+    
+    context = ""
+    if pdf_text:
+        clean_text = pdf_text.replace('\n', ' ')
+        sentences = [s.strip() for s in re.split(r'(?<=[.!?])\s+', clean_text) if len(s.strip()) > 15]
+        matching_s = [s for s in sentences if topic.lower() in s.lower()]
+        if matching_s:
+            context = " ".join(matching_s[:3])
+            
+    if not context:
+        context = f"The topic {topic} is a core concept that represents an important topic of study in this course."
+        
+    evaluation = nlp.evaluate_oral_answer(topic, question, user_answer, context)
+    
+    db_manager.save_quiz_score(u_id, f"Oral: {topic}", evaluation["score"])
+    
+    return jsonify(evaluation)
+
+
 if __name__ == '__main__':
     app.run(debug=True, port=5000)
 

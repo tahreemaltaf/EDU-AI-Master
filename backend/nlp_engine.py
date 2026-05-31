@@ -295,6 +295,249 @@ class NLPEngine:
         # General helper message
         return f"Hello {username}! I am your AI Study Buddy. I can explain concepts from your uploaded PDF slides, show your active study topics, identify your quiz weak areas, or check your login streak (🔥 {streak}d). What would you like to review today?"
 
+    def summarize_transcript(self, text):
+        """Summarize user's voice notes/transcript using T5 or fallback bullet-points."""
+        if not text or len(text.strip()) < 10:
+            return ["Transcript too short to summarize."]
+
+        # Attempt AI summarization
+        if self.has_model:
+            try:
+                input_text = "summarize: " + text
+                inputs = self.tokenizer.encode(input_text, return_tensors="pt", truncation=True, max_length=512).to(self.device)
+                outputs = self.model.generate(
+                    inputs,
+                    max_length=150,
+                    min_length=30,
+                    length_penalty=2.0,
+                    num_beams=4,
+                    early_stopping=True
+                )
+                summary = self.tokenizer.decode(outputs[0], skip_special_tokens=True)
+                if len(summary.strip()) > 10:
+                    # Split summary into distinct sentences as bullets
+                    bullets = [s.strip() + "." for s in re.split(r'\. ', summary) if len(s.strip()) > 5]
+                    return bullets
+            except Exception as e:
+                print(f"T5 Transcript summarization failed: {e}")
+
+        # Robust NLP Fallback: Extract key sentences and noun concepts
+        clean_text = text.replace('\n', ' ')
+        sentences = [s.strip() for s in re.split(r'(?<=[.!?])\s+', clean_text) if len(s.strip()) > 10]
+        
+        if not sentences:
+            return ["No structured sentences found in transcription. Try speaking in complete statements."]
+            
+        concepts = self.extract_concepts(text)
+        bullets = []
+        
+        # 1. Main concept bullet
+        if concepts:
+            bullets.append(f"Primary study concepts identified in note: {', '.join(concepts[:5])}.")
+            
+        # 2. Extract up to 3 most important sentences
+        selected_sentences = []
+        for concept in concepts[:3]:
+            for s in sentences:
+                if concept.lower() in s.lower() and s not in selected_sentences:
+                    selected_sentences.append(s)
+                    break
+        
+        # Add remaining fallback sentences if we don't have enough bullets
+        for s in sentences:
+            if len(selected_sentences) >= 3:
+                break
+            if s not in selected_sentences:
+                selected_sentences.append(s)
+                
+        for s in selected_sentences[:3]:
+            if not s.endswith(('.', '!', '?')):
+                s += '.'
+            bullets.append(s)
+            
+        return bullets
+
+    def generate_flashcards_from_text(self, text):
+        """Extract concepts from voice notes and construct matching spaced-repetition flashcards."""
+        if not text or len(text.strip()) < 15:
+            return []
+            
+        concepts = self.extract_concepts(text)
+        if not concepts:
+            concepts = ["Key Takeaway", "Study Note"]
+            
+        # Filter concepts to avoid generic filler words in fallback counter
+        ignored_words = {
+            "between", "represents", "statistical", "method", "variable", "dependent", 
+            "independent", "using", "through", "under", "about", "called", "would", 
+            "should", "could", "first", "second", "third", "where", "there", "their", 
+            "these", "those", "other", "another", "simple", "example", "please", "study"
+        }
+        filtered_concepts = [c for c in concepts if c.lower() not in ignored_words]
+        
+        # Fallback if filtered list is empty
+        if not filtered_concepts:
+            filtered_concepts = [c for c in concepts]
+            
+        # Select top 4 concepts for clean flashcard creation
+        selected_concepts = filtered_concepts[:4]
+        
+        clean_text = text.replace('\n', ' ')
+        sentences = [s.strip() for s in re.split(r'(?<=[.!?])\s+', clean_text) if len(s.strip()) > 10]
+        
+        flashcards = []
+        for concept in selected_concepts:
+            matching_s = [s for s in sentences if concept.lower() in s.lower()]
+            if matching_s:
+                answer = matching_s[0]
+            else:
+                answer = text[:150] + "..." if len(text) > 150 else text
+                
+            if not answer.endswith(('.', '!', '?')):
+                answer += '.'
+                
+            flashcards.append({
+                "topic": concept,
+                "front": f"Explain the concept of '{concept}' as described in your voice study notes.",
+                "back": answer
+            })
+            
+        return flashcards
+
+    def generate_oral_question(self, topic, context):
+        """Generate a study question for oral test viva practice based on topic and slide context."""
+        if not context or len(context.strip()) < 15:
+            return f"Can you explain the main definition, characteristics, and practical application of the topic '{topic}'?"
+
+        if self.has_model:
+            try:
+                prompt = f"generate question: {context} topic: {topic}"
+                inputs = self.tokenizer.encode(prompt, return_tensors="pt", truncation=True, max_length=512).to(self.device)
+                outputs = self.model.generate(
+                    inputs, 
+                    max_length=64, 
+                    num_beams=4, 
+                    early_stopping=True
+                )
+                gen_q = self.tokenizer.decode(outputs[0], skip_special_tokens=True)
+                if len(gen_q) > 12 and "?" in gen_q:
+                    return gen_q
+            except Exception as e:
+                print(f"Oral QG failed for {topic}: {e}")
+
+        questions_pool = [
+            f"What is the significance of '{topic}' in this course, and how would you explain it to a beginner?",
+            f"Based on your study material, how would you define '{topic}' and what are its key features?",
+            f"Can you summarize the primary purpose, details, and function of '{topic}' as mentioned in the slides?",
+            f"Explain what '{topic}' means and provide any specific examples or equations associated with it."
+        ]
+        return random.choice(questions_pool)
+
+    def evaluate_oral_answer(self, topic, question, user_answer, reference_context):
+        """Semantically grade user's spoken answer against reference slide context."""
+        if not user_answer or len(user_answer.strip()) < 5:
+            return {
+                "score": 0,
+                "grade": "Needs Review",
+                "mentioned_keywords": [],
+                "missing_keywords": [],
+                "feedback": "It looks like you didn't provide a spoken answer. Please record your voice and try again!"
+            }
+
+        ref_clean = reference_context.lower()
+        ans_clean = user_answer.lower()
+
+        stop_words = {
+            "this", "that", "with", "from", "your", "what", "how", "when", "where", 
+            "who", "why", "there", "their", "then", "than", "could", "would", "should", 
+            "these", "those", "because", "which", "while", "about", "other", "after", 
+            "is", "are", "was", "were", "be", "been", "being", "have", "has", "had", 
+            "do", "does", "did", "a", "an", "the", "and", "but", "if", "or", "as", 
+            "of", "at", "by", "for", "to", "in", "on", "into", "onto", "under", "over", 
+            "again", "further", "then", "once", "here", "there", "when", "where", "why", 
+            "how", "all", "any", "both", "each", "few", "more", "most", "other", "some", 
+            "such", "no", "nor", "not", "only", "own", "same", "so", "than", "too", "very",
+            "can", "will", "just", "should", "now", "topic", "context"
+        }
+        
+        ref_words = re.findall(r'\b[a-z]{4,}\b', ref_clean)
+        ref_keywords = list(set([w for w in ref_words if w not in stop_words and len(w) > 4]))
+        
+        topic_words = re.findall(r'\b[a-z]{4,}\b', topic.lower())
+        for tw in topic_words:
+            if tw not in ref_keywords and tw not in stop_words:
+                ref_keywords.append(tw)
+
+        ref_keywords = ref_keywords[:15]
+
+        mentioned = []
+        missing = []
+        for kw in ref_keywords:
+            if kw in ans_clean:
+                mentioned.append(kw.capitalize())
+            else:
+                missing.append(kw.capitalize())
+
+        total_keywords = len(ref_keywords)
+        score = 0
+        if total_keywords > 0:
+            score = int((len(mentioned) / total_keywords) * 100)
+            
+        word_count = len(ans_clean.split())
+        if word_count > 30 and score < 90:
+            score = min(100, score + 10)
+
+        if score >= 75:
+            grade = "Mastered"
+        elif score >= 45:
+            grade = "Partial Match"
+        else:
+            grade = "Needs Review"
+
+        feedback = ""
+        if self.has_model:
+            try:
+                prompt = f"summarize: user answered '{user_answer}' to question '{question}' about '{topic}' based on slide '{reference_context}'."
+                inputs = self.tokenizer.encode(prompt, return_tensors="pt", truncation=True, max_length=512).to(self.device)
+                outputs = self.model.generate(
+                    inputs, 
+                    max_length=90, 
+                    num_beams=4, 
+                    early_stopping=True
+                )
+                gen_feed = self.tokenizer.decode(outputs[0], skip_special_tokens=True)
+                if len(gen_feed) > 20:
+                    feedback = gen_feed
+            except Exception as e:
+                print(f"Feedback generation failed: {e}")
+
+        if not feedback:
+            if grade == "Mastered":
+                feedback = (
+                    f"Excellent explanation! You successfully explained the concept of '{topic}'. "
+                    f"You mentioned key aspects like: {', '.join(mentioned[:4])}. You have a very strong understanding of this concept!"
+                )
+            elif grade == "Partial Match":
+                missing_str = f" Try to also mention: {', '.join(missing[:3])}." if missing else ""
+                feedback = (
+                    f"Good effort! You understand the basic idea of '{topic}' but missed a few crucial details from the course slides.{missing_str} "
+                    f"Review these slides again to build complete mastery."
+                )
+            else:
+                missing_str = f" make sure to explain: {', '.join(missing[:4])}." if missing else ""
+                feedback = (
+                    f"Your answer was a bit brief or missed the main definition of '{topic}'. "
+                    f"In your next attempt,{missing_str} Refer to your study planner to schedule a spaced revision session."
+                )
+
+        return {
+            "score": score,
+            "grade": grade,
+            "mentioned_keywords": mentioned,
+            "missing_keywords": missing,
+            "feedback": feedback
+        }
+
 
 if __name__ == "__main__":
     engine = NLPEngine()
